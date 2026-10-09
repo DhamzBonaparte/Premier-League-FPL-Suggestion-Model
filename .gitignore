@@ -1,0 +1,19 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+
+# Streamlit cache
+.streamlit/
+
+# Hugging Face cache directories
+.cache/
+huggingface/
+
+# Your large model pickle files
+movies_dict.pkl
+similarity.pkl
+
+venv/
+# Environment variables
+.env
+.venv/
