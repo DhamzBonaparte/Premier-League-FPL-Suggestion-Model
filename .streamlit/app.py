@@ -38,3 +38,30 @@ with col2:
 
 with col3:
     gw = st.selectbox("Gameweek", sorted(data["GW"].unique()))
+
+
+def recommend(budget, position, gw, data, model):
+    budget_tenth = int(budget * 10)
+
+    candidates = data[
+        (data["GW"] == gw)
+        & (data["position"] == position)
+        & (data["value"] <= budget_tenth)
+    ].copy()
+
+    if candidates.empty:
+        return None
+
+    pos_encoded = ohe.transform(data[["position"]])
+    pos_data = pd.DataFrame(
+        pos_encoded,
+        columns=pos_encoded.get_feature_names_out(["position"]),
+        index=candidates.index,
+    )
+
+    X = pd.concat(candidates.drop(columns=["position", "name"]), pos_data, axis=1)
+
+    candidates["pred"] = model.predict(X)
+
+    return candidates.nlargest(5, "pred")[["name", "value","pred"]]
+
