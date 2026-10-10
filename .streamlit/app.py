@@ -40,7 +40,7 @@ with col3:
     gw = st.selectbox("Gameweek", sorted(data["GW"].unique()))
 
 
-def recommend(budget, position, gw, data, model):
+def recommend(budget, position, gw, data, model, ohe, top_n):
     budget_tenth = int(budget * 10)
 
     candidates = data[
@@ -52,16 +52,28 @@ def recommend(budget, position, gw, data, model):
     if candidates.empty:
         return None
 
-    pos_encoded = ohe.transform(data[["position"]])
+    pos_encoded = ohe.transform(candidates[["position"]])
+
     pos_data = pd.DataFrame(
         pos_encoded,
-        columns=pos_encoded.get_feature_names_out(["position"]),
-        index=candidates.index,
+        columns=ohe.get_feature_names_out(["position"]),
+        index=candidates.index
     )
 
-    X = pd.concat(candidates.drop(columns=["position", "name"]), pos_data, axis=1)
+    X = pd.concat([candidates.drop(columns=["position", "name"]), pos_data], axis=1)
 
     candidates["pred"] = model.predict(X)
 
-    return candidates.nlargest(5, "pred")[["name", "value","pred"]]
+    return candidates.nlargest(top_n, "pred")[["name", "value", "pred"]]
 
+
+if st.button("Recommend", type="primary"):
+    result = recommend(budget, position, gw, data, model, ohe, top_n=5)
+
+    if result is None:
+        st.warning(
+            "No player match your filter! Try increasing your budget or changing the position"
+        )
+    else:
+        st.subheader(f"Top 5 {position} players for Gameweek {gw} under £{budget}m")
+        st.dataframe(result, use_container_width=True, hide_index=True)
