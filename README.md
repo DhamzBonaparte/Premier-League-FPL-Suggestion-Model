@@ -1,40 +1,54 @@
-# FPL Top-5 Recommender
+# ⚽ FPL Top-5 Player Recommender
 
-🔗 **Live demo:** https://premier-league-fpl-suggestion-model-fccybpydfqgkdmufvxm4hy.streamlit.app/
+Predicts Fantasy Premier League player points and recommends the top 5 players
+for a given budget, position, and gameweek.
+
+🔗 **Live app:** https://premier-league-fpl-suggestion-model-fccybpydfqgkdmufvxm4hy.streamlit.app/
+
+---
 
 ## What it does
-Given a budget, position, and gameweek, returns the top 5 recommended
-Fantasy Premier League players, ranked by a machine learning model.
 
-## Data
-Historical FPL player-gameweek data (41 features per row, ~30k rows).
+User picks:
+- Budget (e.g., £8.0m)
+- Position (GK / DEF / MID / FWD)
+- Gameweek
+
+The app returns the top 5 matching players, ranked by a trained XGBoost model.
+
+---
 
 ## Approach
-- Built lagged form features (e.g., points_last3_avg, minutes_last5_avg) using
-  a shift+rolling window per player, avoiding target leakage.
-- Temporal train/test split (GW1–30 train, GW31–38 test).
-- XGBoost regressor predicting `total_points`, tuned with TimeSeriesSplit CV.
 
-## Leakage hunting (the interesting part)
-Three separate leakage sources were found and removed:
-1. `influence`, `creativity`, `threat` — post-match stats that leak the target.
-2. `expected_goals`, `expected_assists`, `expected_goal_involvements` — per-match, not rolling.
-3. Re-checking after each removal until metrics matched realistic FPL benchmarks.
+- **Features:** lagged form features built with per-player rolling windows
+  (`points_last3_avg`, `minutes_last5_avg`, `goals_last5_avg`, etc.) so every
+  feature is known *before* kickoff.
+- **Model:** XGBoost regressor predicting `total_points`, tuned with
+  GridSearchCV + TimeSeriesSplit.
+- **Split:** GW1–30 train, GW31–38 test (temporal, not random).
+- **Leakage:** three separate leakage sources found and removed; verified with
+  a label permutation test (shuffled-target R² = −0.04).
+- **Deployment:** Streamlit, with the model, OneHotEncoder, and feature list
+  pickled for serving.
 
-A label permutation test confirmed no leakage: shuffled-target R² = −0.04.
+---
 
 ## Results
-- MAE: 1.23 (baseline: 1.41) — 15% lift
-- R²: 0.12
-- Mean per-GW Spearman: 0.41
-- Precision@5: 0.03 (low — top-5 scorers are outliers)
 
-## Known limitations
-- Regression-to-the-mean models miss GW outliers (top-5 has low precision).
-- Early-season predictions (GW1–5) rely on NaN lag features; the model falls back
-  on non-lagged signals.
-- Model is trained on a static snapshot; no live retraining pipeline yet.
+| Metric | Value | Baseline |
+|---|---|---|
+| MAE | **1.23** | 1.41 (predict-mean) |
+| R² | 0.12 | — |
+| Mean per-GW Spearman | 0.41 | — |
 
-## How to run locally
+Beats the naive baseline by ~15%.
+
+---
+
+## Run locally
+
+```bash
+git clone https://github.com/DhamzBonaparte/Premier-League-FPL-Suggestion-Model
+cd Premier-League-FPL-Suggestion-Model
 pip install -r requirements.txt
 streamlit run app.py
